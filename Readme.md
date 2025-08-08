@@ -135,3 +135,18 @@ gpt5_helper_cdc_realtime/
 ```
 
 This structure should provide a solid starting point for building out the remaining functionality.  Feel free to extend it with tests, additional helper classes, CI/CD configuration and deployment scripts as needed.
+
+
+# Module 01 – Raw Zone (Notification → Fetch → CDC → Insert → Reconcile → DQ → Audit)
+
+This drop adds the first working slice of the pipeline focused on the **Raw** zone.
+It follows the steps defined in the design doc and is intended to be iterated module-by-module.
+
+## How to run (locally with DirectRunner)
+```bash
+sbt "project member-pipeline" run
+```
+
+## Deploy (Dataflow)
+Package a fat JAR (sbt-assembly recommended) and submit with DataflowRunner.
+Set Pub/Sub subscription and BigQuery datasets before running.
