@@ -1,0 +1,5 @@
+# Example dependency configuration for Member domain
+dependencies:
+  users:
+    - snapshot_previous_day
+  orders: []

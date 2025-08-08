@@ -1,0 +1,16 @@
+pipeline_name: member_cdc
+ingestion_type: incremental
+reconcile_enabled: true
+tables:
+  - name: users
+    ingestion_type: incremental
+    zones:
+      - raw
+      - structure
+      - refined
+      - analytics
+  - name: orders
+    ingestion_type: full
+    zones:
+      - raw
+      - structure

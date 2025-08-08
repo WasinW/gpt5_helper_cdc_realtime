@@ -1,0 +1,6 @@
+# Data quality rules for Member domain
+rules:
+  - name: not_null
+    columns: ["id", "name", "email"]
+  - name: valid_email
+    columns: ["email"]
