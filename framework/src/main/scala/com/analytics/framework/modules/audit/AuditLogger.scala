@@ -1,13 +1,29 @@
-package com.analytics.framework.pipeline.core
+package com.analytics.framework.modules.audit
 
 import org.apache.beam.sdk.transforms.DoFn
+import com.analytics.framework.pipeline.core.CDCRecord
+import com.google.cloud.bigquery._
+import scala.jdk.CollectionConverters._
 
-class AuditLogger(project: String, domain: String, table: String, zone: String)
-  extends DoFn[CDCRecord, Void] {
+class AuditLogger(projectId: String, frameworkDataset: String, tableName: String, zone: String)
+  extends DoFn[CDCRecord, CDCRecord] {
+
+  @transient private var bq: BigQuery = _
+  @org.apache.beam.sdk.transforms.DoFn.Setup
+  def setup(): Unit = { bq = BigQueryOptions.newBuilder().setProjectId(projectId).build().getService }
+
   @org.apache.beam.sdk.transforms.DoFn.ProcessElement
-  def process(ctx: DoFn[CDCRecord, Void]#ProcessContext): Unit = {
-    val rec = ctx.element()
-    // TODO: write JSON log to GCS or BigQuery framework tables
-    System.out.println(s"AUDIT ${project}/${domain}/${table}/${zone} record=${rec.recordId}")
+  def process(ctx: DoFn[CDCRecord, CDCRecord]#ProcessContext): Unit = {
+    val tableId = TableId.of(frameworkDataset, "pipeline_log")
+    val row = Map(
+      "log_id" -> java.util.UUID.randomUUID().toString,
+      "pipeline_name" -> s"${tableName}_${zone}",
+      "domain" -> frameworkDataset.replaceAll("_framework$", ""),
+      "zone" -> zone,
+      "table_name" -> tableName,
+      "status" -> "SUCCESS"
+    ).asJava.asInstanceOf[java.util.Map[String, AnyRef]]
+    bq.insertAll(InsertAllRequest.newBuilder(tableId).addRow(row).build())
+    ctx.output(ctx.element())
   }
 }

@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters._
 
 case class FetchedData(recordId: String, row: java.util.Map[String, AnyRef])
 
-class BigQueryDataFetcher(projectId: String, dataset: String, table: String)
+class BigQueryDataFetcher(projectId: String, dataset: String, table: String, idColumn: String)
   extends DoFn[NotificationEvent, FetchedData] {
 
   @transient private var bq: BigQuery = _
@@ -21,10 +21,7 @@ class BigQueryDataFetcher(projectId: String, dataset: String, table: String)
   def process(ctx: DoFn[NotificationEvent, FetchedData]#ProcessContext): Unit = {
     val e = ctx.element()
     val ids = e.recordIds.asScala.map(id => s"'$id'").mkString(",")
-    val sql =
-      s"""
-         SELECT * FROM `%s.%s.%s` WHERE record_id IN (%s)
-      """.format(projectId, dataset, table, ids)
+    val sql = s"""SELECT * FROM `%s.%s.%s` WHERE %s IN (%s)""".format(projectId, dataset, table, idColumn, ids)
 
     val config = QueryJobConfiguration.newBuilder(sql).setUseLegacySql(false).build()
     val result = bq.query(config)
@@ -35,11 +32,11 @@ class BigQueryDataFetcher(projectId: String, dataset: String, table: String)
       var idx = 0
       for (field <- schema.getFields.asScala) {
         val v = row.get(idx)
-        map.put(field.getName, if (v.isNull) null else v.getValue)
+        map.put(field.getName, if (v == null || v.isNull) null else v.getValue)
         idx += 1
       }
-      val rid = Option(row.get("record_id")).map(_.getStringValue).getOrElse(java.util.UUID.randomUUID().toString)
-      ctx.output(FetchedData(rid, map))
+      val ridField = Option(map.get(idColumn)).map(_.toString).getOrElse(java.util.UUID.randomUUID().toString)
+      ctx.output(FetchedData(ridField, map))
     }
   }
 }

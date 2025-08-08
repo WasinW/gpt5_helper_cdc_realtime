@@ -1,33 +1,36 @@
-// Root build definition
-// Defines a multi‑project build with two sub‑projects:
-//  - framework: reusable CDC pipeline framework
-//  - memberPipeline: example domain pipeline depending on the framework
+ThisBuild / scalaVersion := "2.12.18"
 
-lazy val scalaV = "2.12.18"
+lazy val versions = new {
+  val beam = "2.58.0"
+  val gcloudBq = "2.43.2"
+  val slf4j = "2.0.12"
+  val gson = "2.10.1"
+  val snake = "2.0"
+  val awsSdk = "2.25.62"
+}
 
-lazy val framework = (project in file("framework"))
+lazy val root = (project in file("."))
+  .aggregate(framework, memberPipeline)
   .settings(
-    name := "cdc-framework",
-    scalaVersion := scalaV,
-    libraryDependencies ++= Seq(
-      "org.apache.beam" %% "beam-runners-google-cloud-dataflow-java" % "2.48.0" % "provided",
-      "org.apache.beam" %% "beam-sdks-java-core" % "2.48.0" % "provided",
-      "com.google.cloud" % "google-cloud-bigquery" % "2.41.2",
-      "com.google.cloud" % "google-cloud-pubsub" % "1.125.6",
-      "com.amazonaws" % "aws-java-sdk-s3" % "1.12.534",
-      "org.yaml" % "snakeyaml" % "2.2"
-    ),
-    // packaging as an assembly is delegated to subprojects if needed
-    Compile / unmanagedSourceDirectories ++= Seq((Compile / sourceDirectory).value / "scala")
+    name := "gpt5-helper-cdc-realtime",
+    version := "0.3.0"
   )
 
-lazy val memberPipeline = (project in file("member-pipeline"))
-  .dependsOn(framework)
-  .settings(
-    name := "member-pipeline",
-    scalaVersion := scalaV,
-    libraryDependencies ++= Seq(
-      "org.apache.beam" %% "beam-runners-google-cloud-dataflow-java" % "2.48.0" % "provided"
-    ),
-    Compile / unmanagedSourceDirectories ++= Seq((Compile / sourceDirectory).value / "scala")
-  )
+lazy val commonLibs = Seq(
+  "org.apache.beam" % "beam-sdks-java-core" % versions.beam,
+  "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % versions.beam,
+  "com.google.cloud" % "google-cloud-bigquery" % versions.gcloudBq,
+  "software.amazon.awssdk" % "s3" % versions.awsSdk,
+  "com.google.code.gson" % "gson" % versions.gson,
+  "org.yaml" % "snakeyaml" % versions.snake,
+  "org.slf4j" % "slf4j-api" % versions.slf4j
+)
+
+lazy val framework = (project in file("framework")).settings(
+  name := "cdc-framework",
+  libraryDependencies ++= commonLibs
+)
+
+lazy val memberPipeline = (project in file("member-pipeline")).dependsOn(framework).settings(
+  name := "member-pipeline"
+)

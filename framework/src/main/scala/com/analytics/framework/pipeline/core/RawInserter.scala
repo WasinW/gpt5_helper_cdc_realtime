@@ -16,13 +16,14 @@ class RawInserter(projectId: String, dataset: String, table: String)
   @org.apache.beam.sdk.transforms.DoFn.ProcessElement
   def process(ctx: DoFn[CDCRecord, CDCRecord]#ProcessContext): Unit = {
     val rec = ctx.element()
-    // Simple insert via streaming API (insertAll). For prod, consider Storage Write API.
     val tableId = TableId.of(dataset, s"${table}_raw")
-    val rowContent = rec.data.asScala.toMap + ("_event_op" -> rec.op, "_ingest_ts" -> java.time.Instant.now().toString)
-    val insertAllRequest = InsertAllRequest.newBuilder(tableId).addRow(rowContent.asJava).build()
+    val rowContent = new java.util.HashMap[String, AnyRef](rec.data)
+    rowContent.put("_event_op", rec.op)
+    rowContent.put("_ingest_ts", java.time.Instant.now().toString)
+    rowContent.put("_table_name", rec.tableName)
+    rowContent.put("_zone", "raw")
+    val insertAllRequest = InsertAllRequest.newBuilder(tableId).addRow(rowContent.asInstanceOf[java.util.Map[String, AnyRef]]).build()
     val response = bq.insertAll(insertAllRequest)
-    if (!response.hasErrors) ctx.output(rec) else {
-      // Optionally: write to DLQ
-    }
+    if (!response.hasErrors) ctx.output(rec.copy(zone = "raw"))
   }
 }

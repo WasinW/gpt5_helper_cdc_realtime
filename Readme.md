@@ -150,3 +150,13 @@ sbt "project member-pipeline" run
 ## Deploy (Dataflow)
 Package a fat JAR (sbt-assembly recommended) and submit with DataflowRunner.
 Set Pub/Sub subscription and BigQuery datasets before running.
+
+# GPT5 Helper CDC Realtime – Full Modules (Raw → Structure → Refined → Analytics)
+
+This branch adds a production-ready scaffold:
+- Region: `asia-southeast1` (Singapore)
+- Full zones with Reconcile + DQ + Audit per zone
+- Config-driven schema mapping + rules
+- Infra SQL for framework tables
+
+See `member-pipeline/config/pipeline_config.yaml` to set project/reconcile prefixes & rules.

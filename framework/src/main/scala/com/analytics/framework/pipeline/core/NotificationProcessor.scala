@@ -5,7 +5,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage
 import com.google.gson.{Gson, JsonParser, JsonElement}
 import scala.jdk.CollectionConverters._
 
-class NotificationProcessor(config: java.util.Map[String, Object], table: String) extends DoFn[PubsubMessage, NotificationEvent] {
+class NotificationProcessor(table: String) extends DoFn[PubsubMessage, NotificationEvent] {
   @transient private var gson: Gson = _
   @transient private var parser: JsonParser = _
 
@@ -34,7 +34,8 @@ class NotificationProcessor(config: java.util.Map[String, Object], table: String
         attr.getOrElse("event_type", "update"),
         table,
         recordIds,
-        attr.getOrElse("event_timestamp", java.time.Instant.now().toString)
+        attr.getOrElse("event_timestamp", java.time.Instant.now().toString),
+        payload
       )
       ctx.output(out)
     }
@@ -46,5 +47,6 @@ case class NotificationEvent(
   eventType: String,
   tableName: String,
   recordIds: java.util.List[String],
-  timestamp: String
+  timestamp: String,
+  content: String
 )
