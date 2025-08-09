@@ -10,5 +10,7 @@ lazy val commonLibs = Seq(
   "com.google.code.gson" % "gson" % versions.gson,
   "org.yaml" % "snakeyaml" % versions.snake,
   "org.slf4j" % "slf4j-api" % versions.slf4j)
+  "io.circe" %% "circe-core" % "0.14.6",
+  "io.circe" %% "circe-parser" % "0.14.6",
 lazy val framework = (project in file("framework")).settings(name := "cdc-framework", libraryDependencies ++= commonLibs)
 lazy val memberPipeline = (project in file("business-domains/member")).dependsOn(framework).settings(name := "member-pipeline")
