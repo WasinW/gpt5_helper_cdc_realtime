@@ -1,0 +1,29 @@
+project_id: demo-the-1
+region: asia-southeast1
+domain: member
+pubsub:
+  topic_create: member-events-create
+  topic_update: member-events-update
+  subscription_create: member-events-create-sub
+  subscription_update: member-events-update-sub
+  dlq:
+    mode: pubsub
+    subscription_create: member-events-create-dlq-sub
+    subscription_update: member-events-update-dlq-sub
+    gcs_bucket: demo-the-1-dlq
+datasets:
+  raw: member_raw
+  structure: member_structure
+  refined: member_refined
+  analytics: member_analytics
+logs:
+  audit_bucket: gs://demo-the-1-audit
+  window_id_pattern: yyyyMMddHHmm
+api:
+  base_url: https://api.example.com/v1
+  token_secret_id: member_api_token
+  timeout_sec: 10
+  rate_limit_rps: 30
+reconciler:
+  aws_bucket: eagleeye
+  prefix_raw: eagleeye/member/raw/dt=YYYY-MM-DD/
