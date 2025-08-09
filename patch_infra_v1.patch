@@ -1,0 +1,130 @@
+diff --git a/infrastructure/terraform/main.tf b/infrastructure/terraform/main.tf
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/infrastructure/terraform/main.tf
+@@ -0,0 +1,13 @@
++terraform {
++  required_version = ">= 1.6.0"
++  required_providers {
++    google = { source = "hashicorp/google", version = "~> 5.32" }
++  }
++  backend "gcs" { bucket = "demo-the-1-tf-state", prefix = "cdc/" }
++}
++provider "google" { project = var.project_id, region = var.region }
++locals { labels = var.labels }
++module "buckets" { source="./modules/buckets" project_id=var.project_id data_bucket=var.data_bucket audit_bucket=var.audit_bucket config_bucket=var.config_bucket dlq_bucket=var.dlq_bucket labels=local.labels }
++module "pubsub"  { source="./modules/pubsub"  project_id=var.project_id domain=var.domain create_topic="member-events-create" update_topic="member-events-update" create_sub="member-events-create-sub" update_sub="member-events-update-sub" create_dlq_sub="member-events-create-dlq-sub" update_dlq_sub="member-events-update-dlq-sub" labels=local.labels }
++module "bigquery"{ source="./modules/bigquery" project_id=var.project_id domain=var.domain labels=local.labels }
++module "monitoring"{ source="./modules/monitoring" project_id=var.project_id domain=var.domain audit_bucket=var.audit_bucket labels=local.labels }
+
+diff --git a/infrastructure/terraform/variables.tf b/infrastructure/terraform/variables.tf
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/infrastructure/terraform/variables.tf
+@@ -0,0 +1,8 @@
++variable "project_id" { type = string }
++variable "region"     { type = string  default = "asia-southeast1" }
++variable "domain"     { type = string  default = "member" }
++variable "data_bucket"   { type = string  default = "demo-the-1-staging" }
++variable "audit_bucket"  { type = string  default = "demo-the-1-audit" }
++variable "config_bucket" { type = string  default = "demo-the-1-config" }
++variable "dlq_bucket"    { type = string  default = "demo-the-1-dlq" }
++variable "labels" { type = map(string) default = { environment="dev", service="cdc", domain="member", team="data-platform", owner="owner@example.com", cost_center="data-analytics", managed_by="terraform" } }
+
+diff --git a/infrastructure/terraform/modules/buckets/main.tf b/infrastructure/terraform/modules/buckets/main.tf
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/infrastructure/terraform/modules/buckets/main.tf
+@@ -0,0 +1,11 @@
++variable "project_id" {}
++variable "data_bucket" {}
++variable "audit_bucket" {}
++variable "config_bucket" {}
++variable "dlq_bucket" {}
++variable "labels" { type = map(string) }
++resource "google_storage_bucket" "data" { name=var.data_bucket location="ASIA-SOUTHEAST1" force_destroy=true labels=var.labels uniform_bucket_level_access=true }
++resource "google_storage_bucket" "audit" { name=var.audit_bucket location="ASIA-SOUTHEAST1" force_destroy=true labels=var.labels uniform_bucket_level_access=true }
++resource "google_storage_bucket" "config" { name=var.config_bucket location="ASIA-SOUTHEAST1" force_destroy=true labels=var.labels uniform_bucket_level_access=true }
++resource "google_storage_bucket" "dlq" { name=var.dlq_bucket location="ASIA-SOUTHEAST1" force_destroy=true labels=var.labels uniform_bucket_level_access=true }
++output "buckets" { value = { data=google_storage_bucket.data.name, audit=google_storage_bucket.audit.name, config=google_storage_bucket.config.name, dlq=google_storage_bucket.dlq.name } }
+
+diff --git a/infrastructure/terraform/modules/pubsub/main.tf b/infrastructure/terraform/modules/pubsub/main.tf
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/infrastructure/terraform/modules/pubsub/main.tf
+@@ -0,0 +1,13 @@
++variable "project_id" {}
++variable "domain" {}
++variable "create_topic" {}
++variable "update_topic" {}
++variable "create_sub" {}
++variable "update_sub" {}
++variable "create_dlq_sub" {}
++variable "update_dlq_sub" {}
++variable "labels" { type = map(string) }
++resource "google_pubsub_topic" "create" { name=var.create_topic labels=var.labels }
++resource "google_pubsub_topic" "update" { name=var.update_topic labels=var.labels }
++resource "google_pubsub_subscription" "create" { name=var.create_sub topic=google_pubsub_topic.create.name labels=var.labels message_retention_duration="604800s" ack_deadline_seconds=20 dead_letter_policy {{ dead_letter_topic = google_pubsub_topic.create.name max_delivery_attempts = 10 }} }
++resource "google_pubsub_subscription" "update" { name=var.update_sub topic=google_pubsub_topic.update.name labels=var.labels message_retention_duration="604800s" ack_deadline_seconds=20 dead_letter_policy {{ dead_letter_topic = google_pubsub_topic.update.name max_delivery_attempts = 10 }} }
+
+diff --git a/infrastructure/terraform/modules/bigquery/main.tf b/infrastructure/terraform/modules/bigquery/main.tf
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/infrastructure/terraform/modules/bigquery/main.tf
+@@ -0,0 +1,7 @@
++variable "project_id" {}
++variable "domain" {}
++variable "labels" { type = map(string) }
++resource "google_bigquery_dataset" "raw" { dataset_id="${var.domain}_raw" location="asia-southeast1" delete_contents_on_destroy=true labels=var.labels }
++resource "google_bigquery_dataset" "structure" { dataset_id="${var.domain}_structure" location="asia-southeast1" delete_contents_on_destroy=true labels=var.labels }
++resource "google_bigquery_dataset" "refined" { dataset_id="${var.domain}_refined" location="asia-southeast1" delete_contents_on_destroy=true labels=var.labels }
++resource "google_bigquery_dataset" "analytics" { dataset_id="${var.domain}_analytics" location="asia-southeast1" delete_contents_on_destroy=true labels=var.labels }
+
+diff --git a/infrastructure/terraform/modules/monitoring/main.tf b/infrastructure/terraform/modules/monitoring/main.tf
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/infrastructure/terraform/modules/monitoring/main.tf
+@@ -0,0 +1,5 @@
++variable "project_id" {}
++variable "domain" {}
++variable "audit_bucket" {}
++variable "labels" { type = map(string) }
++output "monitoring_note" { value = "Monitoring resources will be added in subsequent patches." }
+
+diff --git a/infrastructure/terraform/params/env.dev.tfvars b/infrastructure/terraform/params/env.dev.tfvars
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/infrastructure/terraform/params/env.dev.tfvars
+@@ -0,0 +1,8 @@
++project_id   = "demo-the-1"
++region       = "asia-southeast1"
++domain       = "member"
++data_bucket  = "demo-the-1-staging"
++audit_bucket = "demo-the-1-audit"
++config_bucket= "demo-the-1-config"
++dlq_bucket   = "demo-the-1-dlq"
++labels = { environment="dev", service="cdc", domain="member", team="data-platform", owner="team@example.com", cost_center="data-analytics", managed_by="terraform" }
+
+diff --git a/docs/INFRA.md b/docs/INFRA.md
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/docs/INFRA.md
+@@ -0,0 +1,9 @@
++# Infrastructure (dev)
++- Buckets: demo-the-1-staging / demo-the-1-audit / demo-the-1-config / demo-the-1-dlq
++- Pub/Sub: member-events-create/update (+ subs & dlq-sub)
++- BigQuery datasets: member_raw|member_structure|member_refined|member_analytics
++- Backend: demo-the-1-tf-state / cdc/
++Usage:
++  cd infrastructure/terraform
++  terraform init
++  terraform apply -var-file=./params/env.dev.tfvars
+
