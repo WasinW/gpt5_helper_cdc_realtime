@@ -34,3 +34,11 @@ lazy val framework = (project in file("framework")).settings(
 lazy val memberPipeline = (project in file("member-pipeline")).dependsOn(framework).settings(
   name := "member-pipeline"
 )
+/* oop-wiring-deps */
+ThisBuild / scalaVersion := "2.12.18"
+val beamV = "2.58.0"
+libraryDependencies ++= Seq(
+  "org.apache.beam" % "beam-sdks-java-core" % beamV,
+  "org.apache.beam" % "beam-sdks-java-io-google-cloud-platform" % beamV,
+  "org.yaml" % "snakeyaml" % "2.2"
+)
