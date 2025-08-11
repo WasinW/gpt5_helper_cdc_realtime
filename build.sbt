@@ -42,3 +42,12 @@ libraryDependencies ++= Seq(
   "org.apache.beam" % "beam-sdks-java-io-google-cloud-platform" % beamV,
   "org.yaml" % "snakeyaml" % "2.2"
 )
+
+/* oop-runner-deps */
+ThisBuild / scalaVersion := "2.12.18"
+val beamV = "2.58.0"
+libraryDependencies ++= Seq(
+  "org.apache.beam" % "beam-sdks-java-core" % beamV,
+  "org.apache.beam" % "beam-sdks-java-io-google-cloud-platform" % beamV,
+  "org.yaml" % "snakeyaml" % "2.2"
+)

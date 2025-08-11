@@ -1,6 +1,7 @@
 package com.domain.member.adapters
 import com.analytics.framework.connectors.http.ApiRequest
-final case class Notification(accountId:String, eventType:String)
+import com.analytics.framework.pipeline.stages.NotificationStage // for types
+import com.analytics.framework.pipeline.stages.NotificationStage.Notification
 final case class MemberApiCfg(baseUrl:String, token:String, profileRole:String, timeout:Int)
 object MemberRequestBuilder {
   def fromNotification(api: MemberApiCfg)(evt: Notification): ApiRequest = {
