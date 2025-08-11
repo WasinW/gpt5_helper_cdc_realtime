@@ -1,0 +1,8 @@
+reconcile:
+  mapping:
+    raw: {}
+    structure: {}
+    refined:
+      member_profile: { gcs_to_s3: { member_id: CUST_ID } }
+    analytics:
+      ms_member: { gcs_to_s3: { member_id: CUST_ID } }
