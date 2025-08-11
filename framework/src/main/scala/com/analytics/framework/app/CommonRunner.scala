@@ -3,6 +3,7 @@ import com.analytics.framework.core.base.PipelineCtx
 import com.analytics.framework.pipeline.stages._
 import com.analytics.framework.modules.audit.GcsAuditLogger
 import com.analytics.framework.modules.quality.RulesLoader
+import com.analytics.framework.modules.reconciliation.{ReconcileMappingLoader, S3SampleProvider}
 import com.analytics.framework.utils.YamlLoader
 import org.apache.beam.sdk.Pipeline
 import org.apache.beam.sdk.options.PipelineOptionsFactory
@@ -38,30 +39,81 @@ object CommonRunner {
         val srcUpdate: PCollection[PubsubMessage] = NotificationStage.readFrom(p, subUpdate)
         val merged: PCollection[PubsubMessage]    = PCollectionList.of(srcCreate).and(srcUpdate).apply("FlattenSubs", Flatten.pCollections())
         val notif = new NotificationStage().apply(p, merged)
+
         val rawCfg = RawConfigLoader.load(configPath)
         val mapped = new MessageToRawStage(rawCfg).apply(p, notif)
         val dq     = new QualityStage[Map[String,Any]](RulesLoader.loadNotNullRules("business-domains/member/resources/quality_rules.yaml"), audit("data_quality_log","raw")).apply(p, mapped)
         new BqWriteDynamicStage(datasets("raw"), m => m.getOrElse("table","unknown").toString).apply(p, dq)
-        new ReconcileStage[Map[String,Any]](ReconCfg("raw","<dynamic>", Map.empty), () => Iterable.empty, audit("reconcile_log","raw")).apply(p, dq)
+
+        // Per-table reconcile using S3 samples
+        val recMap = ReconcileMappingLoader.load("business-domains/member/resources/reconcile_mapping.yaml")
+        rawCfg.allowedTables.foreach { t =>
+          val filtered = new FilterByTableStage(t).apply(p, dq)
+          val g2s = recMap.getOrElse("raw", Map.empty).getOrElse(t, Map.empty)
+          val sample = S3SampleProvider.build(projectId, cfg, "raw", t, windowId, g2s)
+          new ReconcileStage[Map[String,Any]](ReconCfg("raw", t, g2s), sample, audit("reconcile_log","raw")).apply(p, filtered)
+        }
 
       case "raw_to_structure" =>
         val struct   = cfg.get("structure").map(_.asInstanceOf[Map[String,Any]]).getOrElse(Map.empty)
         val tables   = struct.get("tables").map(_.asInstanceOf[List[String]]).getOrElse(Nil)
         val mapPath  = struct.get("mapping").map(_.toString).getOrElse("business-domains/member/resources/mappings/structure.yaml")
         val mp       = YamlLoader.load(mapPath).asInstanceOf[Map[String, Map[String,String]]]
+        val recMap   = ReconcileMappingLoader.load("business-domains/member/resources/reconcile_mapping.yaml")
+
         tables.foreach { t =>
           val r   = new BqReadStage(datasets("raw"), t).apply(p, null)
           val out = new FieldMapStage(mp.getOrElse(t, Map.empty)).apply(p, r)
           val w   = new BqWriteStage(datasets("structure"), t).apply(p, out)
-          new ReconcileStage[Map[String,Any]](ReconCfg("structure", t, Map.empty), () => Iterable.empty, audit("reconcile_log","structure")).apply(p, w)
+
+          val g2s = recMap.getOrElse("structure", Map.empty).getOrElse(t, Map.empty)
+          val sample = S3SampleProvider.build(projectId, cfg, "structure", t, windowId, g2s)
+          new ReconcileStage[Map[String,Any]](ReconCfg("structure", t, g2s), sample, audit("reconcile_log","structure")).apply(p, w)
           new QualityStage[Map[String,Any]](RulesLoader.loadNotNullRules("business-domains/member/resources/quality_rules.yaml"), audit("data_quality_log","structure")).apply(p, w)
         }
 
       case "refined_ingest" =>
-        throw new UnsupportedOperationException("refined_ingest: ต้องระบุแหล่งอินพุตใน config (เช่น source จาก structure หรือ tech persona); เดี๋ยวผมใส่ให้ทันทีที่ได้สเปกอินพุต")
+        val recPath = "business-domains/member/resources/reconcile_mapping.yaml"; val dqPath = "business-domains/member/resources/quality_rules.yaml"
+        val cfgR = cfg.get("refined").map(_.asInstanceOf[Map[String,Any]]).getOrElse(Map())
+        val tables = cfgR.get("tables").map(_.asInstanceOf[List[Map[String,Any]]]).getOrElse(Nil)
+        tables.foreach { t =>
+          val name   = t("name").toString
+          val module = t("module").asInstanceOf[Map[String,Any]]; val clazz = module("class").toString
+          val inputs = t.get("inputs").map(_.asInstanceOf[List[String]]).getOrElse(Nil)
+
+          // read & flatten inputs from STRUCTURE dataset
+          val collList = inputs.map(tbl => new BqReadStage(datasets("structure"), tbl).apply(p, null))
+          val merged = if (collList.size == 1) collList.head else PCollectionList.of(collList:_*).apply(s"Flatten-$name", Flatten.pCollections())
+
+          val out    = new TransformStage[Map[String,Any], Map[String,Any]](clazz, module.getOrElse("params", Map.empty[String,Any]).asInstanceOf[Map[String,Any]]).apply(p, merged)
+          val w      = new BqWriteStage(datasets("refined"), name).apply(p, out)
+
+          val g2s = ReconcileMappingLoader.get(recPath, "refined", name)
+          val sample = S3SampleProvider.build(projectId, cfg, "refined", name, windowId, g2s)
+          new ReconcileStage[Map[String,Any]](ReconCfg("refined", name, g2s), sample, audit("reconcile_log","refined")).apply(p, w)
+          new QualityStage[Map[String,Any]](RulesLoader.loadNotNullRules(dqPath), audit("data_quality_log","refined")).apply(p, w)
+        }
 
       case "analysis_ingest" =>
-        throw new UnsupportedOperationException("analysis_ingest: ต้องระบุแหล่งอินพุตใน config (เช่น refined tables ที่ join); เดี๋ยวผมใส่ให้ทันทีที่ได้สเปกอินพุต")
+        val recPath = "business-domains/member/resources/reconcile_mapping.yaml"; val dqPath = "business-domains/member/resources/quality_rules.yaml"
+        val cfgA = cfg.get("analytics").map(_.asInstanceOf[Map[String,Any]]).getOrElse(Map())
+        val tables = cfgA.get("tables").map(_.asInstanceOf[List[Map[String,Any]]]).getOrElse(Nil)
+        tables.foreach { t =>
+          val name   = t("name").toString
+          val module = t("module").asInstanceOf[Map[String,Any]]; val clazz = module("class").toString
+          val inputs = t.get("inputs").map(_.asInstanceOf[List[String]]).getOrElse(Nil)
+
+          val collList = inputs.map(tbl => new BqReadStage(datasets("refined"), tbl).apply(p, null))
+          val merged = if (collList.size == 1) collList.head else PCollectionList.of(collList:_*).apply(s"Flatten-$name", Flatten.pCollections())
+
+          val out    = new TransformStage[Map[String,Any], Map[String,Any]](clazz, module.getOrElse("params", Map.empty[String,Any]).asInstanceOf[Map[String,Any]]).apply(p, merged)
+          val w      = new BqWriteStage(datasets("analytics"), name).apply(p, out)
+
+          val g2s = ReconcileMappingLoader.get(recPath, "analytics", name)
+          val sample = S3SampleProvider.build(projectId, cfg, "analytics", name, windowId, g2s)
+          new ReconcileStage[Map[String,Any]](ReconCfg("analytics", name, g2s), sample, audit("reconcile_log","analytics")).apply(p, w)
+          new QualityStage[Map[String,Any]](RulesLoader.loadNotNullRules(dqPath), audit("data_quality_log","analytics")).apply(p, w)
+        }
 
       case other => throw new IllegalArgumentException(s"Unknown pipeline: $other")
     }

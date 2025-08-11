@@ -14,6 +14,14 @@ pubsub:
   subscription_update: "projects/demo-the-1/subscriptions/member-events-update-sub"
   routing_attribute: "table_name"
 
+s3:
+  bucket: "eagleeye"
+  base_prefix: "member"        # will compose: member/<zone>/dt=YYYY-MM-DD/
+  region: "ap-southeast-1"
+  creds:
+    source: "gcp_secret_manager"    # or "env"
+    secret_name: "aws_ee_default"   # JSON: {"AWS_ACCESS_KEY_ID":"...","AWS_SECRET_ACCESS_KEY":"...","AWS_REGION":"ap-southeast-1"}
+
 raw:
   tables: [s_loy_program, s_org_ext, s_loy_tier, s_loy_mem_tier, s_loy_member, s_contact, s_con_addr, s_addr_per, s_loy_card, s_loy_member_xm, s_user, cx_supp_type, cx_com_channel]
   columns:
@@ -43,21 +51,29 @@ structure:
 refined:
   tables:
     - name: member_profile
+      inputs: [s_loy_program, s_loy_tier, s_loy_mem_tier, s_loy_member, s_contact]
       module: { class: "com.domain.member.modules.MemberProfileTransform" }
     - name: member_address
+      inputs: [s_con_addr, s_addr_per]
       module: { class: "com.domain.member.modules.IdentityTransform" }
     - name: member_card
+      inputs: [s_loy_card]
       module: { class: "com.domain.member.modules.IdentityTransform" }
     - name: member_merge
+      inputs: [s_user]
       module: { class: "com.domain.member.modules.IdentityTransform" }
     - name: member_consent_history
+      inputs: [cx_supp_type]
       module: { class: "com.domain.member.modules.IdentityTransform" }
     - name: member_cont_supp
+      inputs: [cx_supp_type]
       module: { class: "com.domain.member.modules.IdentityTransform" }
     - name: member_comm_pref
+      inputs: [cx_com_channel]
       module: { class: "com.domain.member.modules.IdentityTransform" }
 
 analytics:
   tables:
     - name: ms_member
+      inputs: [member_profile, member_address, member_card, member_merge, member_consent_history, member_cont_supp, member_comm_pref]
       module: { class: "com.domain.member.modules.MsMemberTransform" }

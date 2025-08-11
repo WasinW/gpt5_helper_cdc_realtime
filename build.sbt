@@ -44,3 +44,10 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.17.1",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.1"
 )
+
+/* aws sdk v2 s3 + secret manager */
+libraryDependencies ++= Seq(
+  "software.amazon.awssdk" % "s3" % "2.25.43",
+  "software.amazon.awssdk" % "auth" % "2.25.43",
+  "com.google.cloud" % "google-cloud-secretmanager" % "2.36.0"
+)
