@@ -51,3 +51,17 @@ libraryDependencies ++= Seq(
   "software.amazon.awssdk" % "auth" % "2.25.43",
   "com.google.cloud" % "google-cloud-secretmanager" % "2.36.0"
 )
+
+libraryDependencies += "org.yaml" % "snakeyaml" % "2.3"
+
+libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % "2.17.1"
+
+libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.17.1"
+
+libraryDependencies += "com.google.cloud" % "google-cloud-secretmanager" % "2.36.0"
+
+libraryDependencies += "com.google.cloud" % "google-cloud-storage" % "2.37.0"
+
+libraryDependencies += "software.amazon.awssdk" % "s3" % "2.25.43"
+
+libraryDependencies += "software.amazon.awssdk" % "auth" % "2.25.43"
