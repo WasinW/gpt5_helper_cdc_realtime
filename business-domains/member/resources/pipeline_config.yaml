@@ -1,0 +1,12 @@
+domain: member
+window_id_pattern: "yyyyMMddHHmm"
+datasets: { raw: "member_raw", structure: "member_structure", refined: "member_refined", analytics: "member_analytics" }
+pipelines: { enabled: [raw_ingest, raw_to_structure, refined_ingest, analysis_ingest] }
+refined:
+  tables:
+    - name: member_profile
+      module: { class: "com.domain.member.modules.MemberProfileTransform", jar: "gs://dp_framework/business-domain/member/jars/member-refined-mods.jar" }
+analytics:
+  tables:
+    - name: ms_member
+      module: { class: "com.domain.member.modules.MsMemberTransform", jar: "gs://dp_framework/business-domain/member/jars/member-analytics-mods.jar" }

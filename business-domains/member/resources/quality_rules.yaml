@@ -1,0 +1,4 @@
+rules:
+  - id: not_null_member_id
+    type: not_null
+    columns: [member_id]

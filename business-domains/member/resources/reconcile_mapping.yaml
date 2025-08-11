@@ -1,0 +1,22 @@
+reconcile:
+  mapping:
+    raw:
+      s_loy_program:
+        gcs_to_s3:
+          program_id: PROG_ID
+          member_id: CUST_ID
+    structure:
+      s_loy_program:
+        gcs_to_s3:
+          program_id: PROG_ID
+          member_id: CUST_ID
+    refined:
+      member_profile:
+        gcs_to_s3:
+          member_id: CUST_ID
+          tier: LVL
+    analytics:
+      ms_member:
+        gcs_to_s3:
+          member_id: CUST_ID
+          last_purchase_dt: LAST_TXN_DATE
