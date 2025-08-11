@@ -1,0 +1,63 @@
+domain: member
+window_id_pattern: "yyyyMMddHHmm"
+
+datasets:
+  raw: "member_raw"
+  structure: "member_structure"
+  refined: "member_refined"
+  analytics: "member_analytics"
+
+pipelines: { enabled: [raw_ingest, raw_to_structure, refined_ingest, analysis_ingest] }
+
+pubsub:
+  subscription_create: "projects/demo-the-1/subscriptions/member-events-create-sub"
+  subscription_update: "projects/demo-the-1/subscriptions/member-events-update-sub"
+  routing_attribute: "table_name"
+
+raw:
+  tables: [s_loy_program, s_org_ext, s_loy_tier, s_loy_mem_tier, s_loy_member, s_contact, s_con_addr, s_addr_per, s_loy_card, s_loy_member_xm, s_user, cx_supp_type, cx_com_channel]
+  columns:
+    default:
+      account_id: "attr:accountId"
+      event_type: "attr:event_type"
+      raw_payload: "json:$"
+      ingest_ts: "now_millis"
+    s_loy_program: {}
+    s_org_ext: {}
+    s_loy_tier: {}
+    s_loy_mem_tier: {}
+    s_loy_member: {}
+    s_contact: {}
+    s_con_addr: {}
+    s_addr_per: {}
+    s_loy_card: {}
+    s_loy_member_xm: {}
+    s_user: {}
+    cx_supp_type: {}
+    cx_com_channel: {}
+
+structure:
+  tables: [s_loy_program, s_org_ext, s_loy_tier, s_loy_mem_tier, s_loy_member, s_contact, s_con_addr, s_addr_per, s_loy_card, s_loy_member_xm, s_user, cx_supp_type, cx_com_channel]
+  mapping: "business-domains/member/resources/mappings/structure.yaml"
+
+refined:
+  tables:
+    - name: member_profile
+      module: { class: "com.domain.member.modules.MemberProfileTransform" }
+    - name: member_address
+      module: { class: "com.domain.member.modules.IdentityTransform" }
+    - name: member_card
+      module: { class: "com.domain.member.modules.IdentityTransform" }
+    - name: member_merge
+      module: { class: "com.domain.member.modules.IdentityTransform" }
+    - name: member_consent_history
+      module: { class: "com.domain.member.modules.IdentityTransform" }
+    - name: member_cont_supp
+      module: { class: "com.domain.member.modules.IdentityTransform" }
+    - name: member_comm_pref
+      module: { class: "com.domain.member.modules.IdentityTransform" }
+
+analytics:
+  tables:
+    - name: ms_member
+      module: { class: "com.domain.member.modules.MsMemberTransform" }
