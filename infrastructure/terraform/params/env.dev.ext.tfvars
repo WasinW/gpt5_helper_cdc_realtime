@@ -1,0 +1,6 @@
+project_tag = "new_data_plateform"
+framework_bucket          = "dp_framework"
+data_secure_bucket        = "dp_data_secure"
+data_analytics_bucket     = "dp_data_analytics"
+data_secure_dlq_bucket    = "dp_data_secure_dlq"
+data_analytics_dlq_bucket = "dp_data_analytics_dlq"
