@@ -1,0 +1,22 @@
+[0m[[0m[31merror[0m] [0m[0mC:\Users\wasin.wangsombut\Documents\git\sandbox\gpt5_helper_cdc_realtime\framework\src\main\scala\com\analytics\framework\connectors\s3\S3JsonlReader.scala:91:42: identifier expected but integer literal found.[0m
+[0m[[0m[31merror[0m] [0m[0m    if (windowId.length>=8) s"${windowId[0:4]}-${windowId[4:6]}-${windowId[6:8]}" else windowId[0m
+[0m[[0m[31merror[0m] [0m[0m                                         ^[0m
+[0m[[0m[31merror[0m] [0m[0mC:\Users\wasin.wangsombut\Documents\git\sandbox\gpt5_helper_cdc_realtime\framework\src\main\scala\com\analytics\framework\connectors\s3\S3JsonlReader.scala:91:46: ']' expected but '}' found.[0m
+[0m[[0m[31merror[0m] [0m[0m    if (windowId.length>=8) s"${windowId[0:4]}-${windowId[4:6]}-${windowId[6:8]}" else windowId[0m
+[0m[[0m[31merror[0m] [0m[0m                                             ^[0m
+[0m[[0m[31merror[0m] [0m[0mC:\Users\wasin.wangsombut\Documents\git\sandbox\gpt5_helper_cdc_realtime\framework\src\main\scala\com\analytics\framework\connectors\s3\S3JsonlReader.scala:91:59: identifier expected but integer literal found.[0m
+[0m[[0m[31merror[0m] [0m[0m    if (windowId.length>=8) s"${windowId[0:4]}-${windowId[4:6]}-${windowId[6:8]}" else windowId[0m
+[0m[[0m[31merror[0m] [0m[0m                                                          ^[0m
+[0m[[0m[31merror[0m] [0m[0mC:\Users\wasin.wangsombut\Documents\git\sandbox\gpt5_helper_cdc_realtime\framework\src\main\scala\com\analytics\framework\connectors\s3\S3JsonlReader.scala:91:63: ']' expected but '}' found.[0m
+[0m[[0m[31merror[0m] [0m[0m    if (windowId.length>=8) s"${windowId[0:4]}-${windowId[4:6]}-${windowId[6:8]}" else windowId[0m
+[0m[[0m[31merror[0m] [0m[0m                                                              ^[0m
+[0m[[0m[31merror[0m] [0m[0mC:\Users\wasin.wangsombut\Documents\git\sandbox\gpt5_helper_cdc_realtime\framework\src\main\scala\com\analytics\framework\connectors\s3\S3JsonlReader.scala:91:76: identifier expected but integer literal found.[0m
+[0m[[0m[31merror[0m] [0m[0m    if (windowId.length>=8) s"${windowId[0:4]}-${windowId[4:6]}-${windowId[6:8]}" else windowId[0m
+[0m[[0m[31merror[0m] [0m[0m                                                                           ^[0m
+[0m[[0m[31merror[0m] [0m[0mC:\Users\wasin.wangsombut\Documents\git\sandbox\gpt5_helper_cdc_realtime\framework\src\main\scala\com\analytics\framework\connectors\s3\S3JsonlReader.scala:91:80: ']' expected but '}' found.[0m
+[0m[[0m[31merror[0m] [0m[0m    if (windowId.length>=8) s"${windowId[0:4]}-${windowId[4:6]}-${windowId[6:8]}" else windowId[0m
+[0m[[0m[31merror[0m] [0m[0m                                                                               ^[0m
+[0m[[0m[31merror[0m] [0m[0mC:\Users\wasin.wangsombut\Documents\git\sandbox\gpt5_helper_cdc_realtime\framework\src\main\scala\modules\audit\AuditStorage.scala:13:51: ';' expected but string literal found.[0m
+[0m[[0m[31merror[0m] [0m[0m    val json = record.map { case (k, v) => s"\"$k\":\"$v\"" }.mkString("{", ",", "}")[0m
+[0m[[0m[31merror[0m] [0m[0m                                                  ^[0m
+[0m[[0m[31merror[0m] [0m[0m7 errors found[0m
