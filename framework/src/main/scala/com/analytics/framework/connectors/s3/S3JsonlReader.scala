@@ -1,4 +1,5 @@
 package com.analytics.framework.connectors.s3
+
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3Client
@@ -8,14 +9,13 @@ import scala.collection.mutable.ListBuffer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.analytics.framework.utils.SecretManagerUtil
-import com.analytics.framework.utils.JsonUtils // optional if available; else use mapper directly
 import scala.jdk.CollectionConverters._
-import com.analytics.framework.utils.YamlLoader
 
 object S3JsonlReader {
   private val om = new ObjectMapper().registerModule(DefaultScalaModule)
 
   case class AwsCreds(id:String, secret:String, region:String)
+
   private def loadCreds(project:String, cfg: Map[String,Any]): AwsCreds = {
     val s3 = cfg("s3").asInstanceOf[Map[String,Any]]
     val region = s3.getOrElse("region","ap-southeast-1").toString
@@ -44,29 +44,28 @@ object S3JsonlReader {
     S3Client.builder().region(Region.of(creds.region)).credentialsProvider(prov).build()
   }
 
-  /** Read JSONL objects under s3://bucket/prefix/dt=YYYY-MM-DD/ filtering by table name.
-    * It matches keys in these forms:
-    *   .../table=<table>/part-*.jsonl
-    *   .../<table>*.jsonl
-    */
+  /** Read JSONL rows from s3://bucket/base/zone/dt=YYYY-MM-DD/, matching table name. */
   def readJsonlForTable(projectId:String, cfg: Map[String,Any], zone:String, table:String, windowId:String): Iterable[Map[String,Any]] = {
-    val s3c = cfg("s3").asInstanceOf[Map[String,Any]]
+    val s3c    = cfg("s3").asInstanceOf[Map[String,Any]]
     val bucket = s3c.getOrElse("bucket","eagleeye").toString
     val base   = s3c.getOrElse("base_prefix","member").toString
-    val dt     = toDate(windowId) // 20250810T0100 -> 2025-08-10
+    val dt     = toDate(windowId) // e.g. 20250810T0100 -> 2025-08-10
     val prefix = s"$base/$zone/dt=$dt/"
-    val creds  = loadCreds(projectId, cfg); val cli = client(creds)
+    val creds  = loadCreds(projectId, cfg)
+    val cli    = client(creds)
 
     val req = ListObjectsV2Request.builder().bucket(bucket).prefix(prefix).build()
     val it  = cli.listObjectsV2Paginator(req).iterator()
+
     val keys = ListBuffer[String]()
-    while(it.hasNext){
+    while (it.hasNext) {
       val page = it.next()
       page.contents().forEach(obj => {
         val k = obj.key()
         if (k.endsWith(".jsonl") && (k.contains(s"/table=$table/") || k.split("/").last.startsWith(table))) keys += k
       })
     }
+
     val rows = ListBuffer[Map[String,Any]]()
     keys.foreach { k =>
       val goreq = GetObjectRequest.builder().bucket(bucket).key(k).build()
@@ -75,8 +74,9 @@ object S3JsonlReader {
       try {
         var line: String = null
         while({ line = br.readLine(); line != null }) {
-          if (line.trim.nonEmpty) {
-            val node = om.readTree(line)
+          val t = line.trim
+          if (t.nonEmpty) {
+            val node = om.readTree(t)
             val m: Map[String,Any] = om.convertValue(node, classOf[Map[String,Object]]).asInstanceOf[Map[String,Any]]
             rows += m
           }
@@ -87,7 +87,12 @@ object S3JsonlReader {
   }
 
   private def toDate(windowId:String): String = {
-    // assumes yyyyMMdd... -> yyyy-MM-dd
-    if (windowId.length>=8) s"${windowId[0:4]}-${windowId[4:6]}-${windowId[6:8]}" else windowId
+    // Expect yyyyMMdd[...] -> yyyy-MM-dd ; fallback = windowId
+    if (windowId != null && windowId.length >= 8) {
+      val y = windowId.substring(0, 4)
+      val m = windowId.substring(4, 6)
+      val d = windowId.substring(6, 8)
+      s"$y-$m-$d"
+    } else windowId
   }
 }
