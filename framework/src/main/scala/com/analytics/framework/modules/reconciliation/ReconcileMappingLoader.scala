@@ -13,7 +13,7 @@ object ReconcileMappingLoader{
             zone -> mtables.asScala.map{ case (tbl, kv) => tbl -> kv.asScala.toMap }.toMap
          }.toMap
       case m: Map[_,_] =>
-        m.asInstanceOf[Map[String, Map[String, Map[String,String]]]]
+        m.asInstanceOf[Map[String, Any]].mapValues(_.asInstanceOf[Map[String, Any]].mapValues(_.asInstanceOf[Map[String,String]])).toMap
       case _ => Map.empty
     }
   }

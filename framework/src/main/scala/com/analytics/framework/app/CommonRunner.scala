@@ -12,18 +12,45 @@ object CommonRunner{
     val domain     = sys.props.getOrElse("domain","member")
     val windowId   = sys.props.getOrElse("window_id","202501010000")
     val configPath = "business-domains/member/resources/pipeline_config.yaml"
-    val cfg        = YamlLoader.load(configPath)
-    val datasets   = cfg("datasets").asInstanceOf[Map[String,String]]
-    val buckets    = cfg.getOrElse("buckets", Map("audit"->"gs://dummy-bucket")).asInstanceOf[Map[String,String]]
+    // val cfg        = { val __raw = YamlLoader.load(configPath); com.analytics.framework.utils.JavaInterop.deepMap(__raw) }
+    val cfg: Map[String, Any] = YamlLoader.load(configPath) // ได้ Scala Map แล้ว
+    // val datasets   = cfg("datasets").asInstanceOf[Map[String,String]]
+    val datasets: Map[String, String] =
+      cfg.get("datasets").map(JavaInterop.deepAsScala)
+        .getOrElse(Map.empty[String,Any])
+        
+        .map { case (k,v) => k -> String.valueOf(v) }
+
+    // val buckets    = cfg.getOrElse("buckets", Map("audit"->"gs://dummy-bucket")).asInstanceOf[Map[String,String]]
+    val buckets: Map[String, String] =
+      cfg.get("buckets").map(JavaInterop.deepAsScala)
+        .getOrElse(Map.empty[String,Any])
+        
+        .map { case (k,v) => k -> String.valueOf(v) }
+
     implicit val ctx: PipelineCtx =
       PipelineCtx(projectId, region, domain, datasets, buckets, cfg.getOrElse("window_id_pattern","yyyyMMddHHmm").toString, configPath, Map("window_id"->windowId))
     def audit(kind:String, zone:String) = (line:String) => GcsAuditLogger.writeLine(s"${buckets("audit")}/" + s"$kind/$domain/$zone/$windowId.log", line)
     val p = Pipeline.create()
     // ตัวอย่างสาย raw (สั้นๆ): ปล่อยผ่านเฉย ๆ เพื่อคอมไพล์
-    val _ = (new QualityStage[Map[String,Any]](RulesLoader.loadNotNullRules("business-domains/member/resources/quality_rules.yaml"), audit("data_quality_log","raw")))
+    // val _ = (new QualityStage[Map[String,Any]](RulesLoader.loadNotNullRules("business-domains/member/resources/quality_rules.yaml"), audit("data_quality_log","raw")))
+    // val _qualityLink =
+    //   new QualityStage[Map[String,Any]](
+    //     QualityRules(RulesLoader.loadNotNullRules("business-domains/member/resources/quality_rules.yaml")),
+    //     audit("data_quality_log","raw")
+    //   )
+    val _qualityLink =
+      new QualityStage[Map[String,Any]](
+        QualityRules(notNull = Some(RulesLoader.loadNotNullRules("business-domains/member/resources/quality_rules.yaml"))),
+        audit("data_quality_log","raw")
+      )
+
     // ตัวอย่าง refined/analytics wiring (สั้น)
     val _2 = (new BqWriteStage(datasets("refined"), "member_profile"))
-    val _3 = (new ReconcileStage[Map[String,Any]](ReconCfg("refined","member_profile", Map.empty), Nil, audit("reconcile_log","refined")))
+    // val _3 = (new ReconcileStage[Map[String,Any]](ReconCfg("refined","member_profile", Map.empty), Nil, audit("reconcile_log","refined")))
+    val _recLink =
+      new ReconcileStage[Map[String,Any]]("refined","member_profile", Map.empty, Nil, audit("reconcile_log","refined"))
+
     p.run().waitUntilFinish()
   }
 }
