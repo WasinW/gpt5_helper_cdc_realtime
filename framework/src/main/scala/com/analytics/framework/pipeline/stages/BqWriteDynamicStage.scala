@@ -10,47 +10,58 @@ import org.apache.beam.sdk.Pipeline
 
 import com.analytics.framework.core.base.{BaseStage, PipelineCtx}
 
+/**
+ * Stage that writes a stream of maps into BigQuery using dynamic table
+ * destinations.  Each input map must contain a "table" key which specifies
+ * the destination table name; if the key is missing the record will be
+ * written to a table named "unknown".  The write is performed as a
+ * side‑effect; the original input PCollection is passed through unchanged.
+ *
+ * @param dataset the BigQuery dataset where tables reside
+ */
 class BqWriteDynamicStage(dataset: String)
-  extends BaseStage[Map[String,Any], Map[String,Any]] {
-
+    extends BaseStage[Map[String, Any], Map[String, Any]] {
   override def name: String = s"BqWriteDynamic($dataset)"
 
-  def apply(p: Pipeline, in: PCollection[Map[String,Any]])
-           (implicit ctx: PipelineCtx): PCollection[Map[String,Any]] = {
-
+  /**
+   * Writes the input maps to BigQuery tables determined at runtime.
+   *
+   * @param p   the Beam pipeline
+   * @param in  the input collection of maps (must include a "table" key)
+   * @param ctx implicit pipeline context providing the project ID
+   * @return the input collection unchanged
+   */
+  override def apply(p: Pipeline, in: PCollection[Map[String, Any]])(implicit ctx: PipelineCtx): PCollection[Map[String, Any]] = {
     val project = ctx.projectId
-    val ds      = dataset
-
-    // Map Scala Map -> TableRow (ต้องมี key "table" สำหรับเลือกปลายทาง)
-    val tableRows = in.apply("MapToTableRow", ParDo.of(new DoFn[Map[String,Any], TableRow] {
+    val ds = dataset
+    // Map Scala Map -> TableRow (must have key "table" for choosing destination)
+    val tableRows = in.apply("MapToTableRow", ParDo.of(new DoFn[Map[String, Any], TableRow] {
       @ProcessElement
-      def proc(c: DoFn[Map[String,Any], TableRow]#ProcessContext): Unit = {
-        val m  = c.element()
+      def proc(c: DoFn[Map[String, Any], TableRow]#ProcessContext): Unit = {
+        val m = c.element()
         val tr = new TableRow()
-        m.foreach{ case (k,v) => tr.set(k, if (v==null) null else v.toString) }
+        m.foreach { case (k, v) => tr.set(k, if (v == null) null else v.toString) }
         if (!m.contains("table")) tr.set("table", "unknown")
         c.output(tr)
       }
     }))
-
-    // เขียน BigQuery แบบ DynamicDestinations
+    // Write to BigQuery using DynamicDestinations
     tableRows.apply("bqDynamicWrite",
       BigQueryIO.writeTableRows()
-        .to(new DynamicDestinations[TableRow, String](){
+        .to(new DynamicDestinations[TableRow, String]() {
           override def getDestination(e: ValueInSingleWindow[TableRow]): String = {
-            val tr    = e.getValue
+            val tr = e.getValue
             val table = Option(tr.get("table")).map(_.toString).getOrElse("unknown")
             s"$project:$ds.$table"
           }
           override def getTable(dest: String): TableDestination =
             new TableDestination(dest, s"dynamic to $dest")
-          override def getSchema(dest: String): TableSchema = null // CREATE_NEVER → ไม่ต้อง schema
+          override def getSchema(dest: String): TableSchema = null // CREATE_NEVER → no schema
         })
         .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER)
         .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
     )
-
-    // passthrough collection เดิม (stage นี้ทำ side-effect write BQ)
+    // Pass through the original collection
     in
   }
 }

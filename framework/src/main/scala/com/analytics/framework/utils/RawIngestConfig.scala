@@ -1,25 +1,24 @@
 package com.analytics.framework.utils
 
-/** Minimal + defensive config holder for raw ingest mapping.
-  * It provides multiple aliases so that existing code keeps compiling:
-  *  - mapping, specs, fields (all are Map[String,String] aliases)
-  *  - get, contains helpers
-  * Optional knobs (with defaults) are included for future use.
-  */
-// final case class RawIngestConfig(
-//   mapping: Map[String, String],
-//   idColumn: String = "record_id",
-//   tableFieldName: String = "table"
-// ) {
-//   // aliases to be tolerant with different field names used elsewhere
-//   val specs: Map[String, String]  = mapping
-//   val fields: Map[String, String] = mapping
-
-//   def get(key: String): Option[String] = mapping.get(key)
-//   def contains(key: String): Boolean   = mapping.contains(key)
-// }
+/**
+ * Configuration for raw ingestion mappings.
+ *
+ * A `RawIngestConfig` defines how to extract fields from an incoming message
+ * when converting it into a raw record.  Each entry in the `fields` list
+ * specifies a target column name and a specification describing how to
+ * obtain the value from the message.  Specifications are interpreted by
+ * `MessageToRawStage` and may begin with "attr:" to read from the
+ * Pub/Sub message attributes or "json:" to read a dot‑path from the
+ * JSON payload.
+ *
+ * @param idField optional name of the message attribute or JSON field
+ *                that uniquely identifies the record
+ * @param tableField optional name of the message attribute or JSON field
+ *                   that contains the destination table name
+ * @param fields list of (targetColumn, specification) pairs
+ */
 final case class RawIngestConfig(
-  idField: Option[String],            // เช่น "record_id" หรือ None
-  tableField: Option[String],         // ระบุตารางปลายทางแบบ dynamic (ถ้ามี) หรือ None
-  fields: List[(String, String)]      // mapping: ชื่อคอลัมน์ -> สเปค (path:/ json:... attr:...)
+    idField: Option[String] = None,
+    tableField: Option[String] = None,
+    fields: List[(String, String)] = List.empty
 )
