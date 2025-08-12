@@ -17,8 +17,7 @@ lazy val root = (project in file("."))
   )
 
 lazy val commonLibs = Seq(
-  "org.apache.beam" % "org.apache.beam" % "beam-sdks-java-core" % versions.beam,
-  "org.apache.beam" % "beam-runners-direct-java" % versions.beam % versions.beam,
+  "org.apache.beam" % "beam-sdks-java-core" % versions.beam,
   "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % versions.beam,
   "com.google.cloud" % "google-cloud-bigquery" % versions.gcloudBq,
   "software.amazon.awssdk" % "s3" % versions.awsSdk,

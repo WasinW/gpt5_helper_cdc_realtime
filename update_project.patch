@@ -1,0 +1,75 @@
+*** Begin Patch
+*** Add File: build.sbt
+ThisBuild / scalaVersion := "2.12.18"
+
+lazy val versions = new {
+  val beam      = "2.58.0"
+  val gcloudBq  = "2.43.2"
+  val slf4j     = "2.0.12"
+  val gson      = "2.10.1"
+  val snake     = "2.0"
+  val awsSdk    = "2.25.62"
+}
+
+lazy val root = (project in file("."))
+  .aggregate(framework, memberPipeline)
+  .settings(
+    name := "gpt5-helper-cdc-realtime",
+    version := "0.3.0"
+  )
+
+lazy val commonLibs = Seq(
+  "org.apache.beam" % "beam-sdks-java-core" % versions.beam,
+  "org.apache.beam" % "beam-runners-google-cloud-dataflow-java" % versions.beam,
+  // Include DirectRunner to enable local execution in development and tests
+  "org.apache.beam" % "beam-runners-direct-java" % versions.beam,
+  "com.google.cloud" % "google-cloud-bigquery" % versions.gcloudBq,
+  "software.amazon.awssdk" % "s3" % versions.awsSdk,
+  "com.google.code.gson" % "gson" % versions.gson,
+  "org.yaml" % "snakeyaml" % versions.snake,
+  "org.slf4j" % "slf4j-api" % versions.slf4j
+)
+
+lazy val framework = (project in file("framework")).settings(
+  name := "cdc-framework",
+  libraryDependencies ++= commonLibs
+)
+
+lazy val memberPipeline = (project in file("member-pipeline")).dependsOn(framework).settings(
+  name := "member-pipeline"
+)
+
+*** End Patch
+*** Begin Patch
+*** Add File: framework/src/main/scala/com/analytics/framework/core/base/PipelineCtx.scala
+package com.analytics.framework.core.base
+
+/**
+ * PipelineCtx holds runtime configuration and contextual information for pipeline stages.
+ *
+ * @param projectId       GCP project identifier
+ * @param region          Cloud region (e.g. "us-central1")
+ * @param domain          Business domain (e.g. "member")
+ * @param datasets        Mapping of dataset names to BigQuery dataset identifiers
+ * @param buckets         Mapping of bucket types to GCS bucket URIs
+ * @param windowIdPattern Pattern used for window identifiers (e.g. "yyyyMMddHHmm")
+ * @param configPath      Path to the loaded configuration file
+ * @param runtimeArgs     Additional runtime arguments (such as window_id)
+ */
+case class PipelineCtx(
+    projectId: String,
+    region: String,
+    domain: String,
+    datasets: Map[String, String],
+    buckets: Map[String, String],
+    windowIdPattern: String,
+    configPath: String,
+    runtimeArgs: Map[String, String]
+) {
+  /** Lookup a dataset by name. */
+  def dataset(name: String): Option[String] = datasets.get(name)
+  /** Lookup a bucket by name. */
+  def bucket(name: String): Option[String] = buckets.get(name)
+  /** Lookup a runtime argument by name. */
+  def arg(name: String): Option[String]   = runtimeArgs.get(name)
+}
