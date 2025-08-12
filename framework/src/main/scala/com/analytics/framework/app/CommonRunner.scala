@@ -1,4 +1,7 @@
 package com.analytics.framework.app
+
+import com.analytics.framework.utils.{JavaInterop, YamlLoader}
+import scala.collection.JavaConverters._
 import com.analytics.framework.core.base.PipelineCtx
 import com.analytics.framework.modules.audit.GcsAuditLogger
 import com.analytics.framework.modules.quality.RulesLoader
@@ -6,27 +9,32 @@ import com.analytics.framework.pipeline.stages._
 import com.analytics.framework.utils.{YamlLoader, RawConfigLoader}
 import org.apache.beam.sdk.Pipeline
 object CommonRunner{
+  private def toStringMap(x: Any): Map[String, String] = x match {
+    case m: Map[_, _] =>
+      m.asInstanceOf[Map[String, Any]].map { case (k, v) => k.toString -> String.valueOf(v) }
+    case jm: java.util.Map[_, _] =>
+      jm.asInstanceOf[java.util.Map[String, Any]].asScala.toMap.map { case (k, v) => k.toString -> String.valueOf(v) }
+    case _ => Map.empty[String, String]
+  }
+
   def main(args:Array[String]): Unit = {
     val projectId  = sys.props.getOrElse("projectId","demo")
     val region     = sys.props.getOrElse("region","asia-southeast1")
     val domain     = sys.props.getOrElse("domain","member")
     val windowId   = sys.props.getOrElse("window_id","202501010000")
     val configPath = "business-domains/member/resources/pipeline_config.yaml"
-    // val cfg        = { val __raw = YamlLoader.load(configPath); com.analytics.framework.utils.JavaInterop.deepMap(__raw) }
     val cfg: Map[String, Any] = YamlLoader.load(configPath) // ได้ Scala Map แล้ว
-    // val datasets   = cfg("datasets").asInstanceOf[Map[String,String]]
     val datasets: Map[String, String] =
-      cfg.get("datasets").map(JavaInterop.deepAsScala)
-        .getOrElse(Map.empty[String,Any])
-        
-        .map { case (k,v) => k -> String.valueOf(v) }
+      cfg.get("datasets")
+        .map(JavaInterop.deepAsScala)
+        .map(toStringMap)
+        .getOrElse(Map.empty)
 
-    // val buckets    = cfg.getOrElse("buckets", Map("audit"->"gs://dummy-bucket")).asInstanceOf[Map[String,String]]
     val buckets: Map[String, String] =
-      cfg.get("buckets").map(JavaInterop.deepAsScala)
-        .getOrElse(Map.empty[String,Any])
-        
-        .map { case (k,v) => k -> String.valueOf(v) }
+      cfg.get("buckets")
+        .map(JavaInterop.deepAsScala)
+        .map(toStringMap)
+        .getOrElse(Map("audit" -> "gs://dummy-bucket"))
 
     implicit val ctx: PipelineCtx =
       PipelineCtx(projectId, region, domain, datasets, buckets, cfg.getOrElse("window_id_pattern","yyyyMMddHHmm").toString, configPath, Map("window_id"->windowId))

@@ -6,15 +6,20 @@ package com.analytics.framework.utils
   *  - get, contains helpers
   * Optional knobs (with defaults) are included for future use.
   */
-final case class RawIngestConfig(
-  mapping: Map[String, String],
-  idColumn: String = "record_id",
-  tableFieldName: String = "table"
-) {
-  // aliases to be tolerant with different field names used elsewhere
-  val specs: Map[String, String]  = mapping
-  val fields: Map[String, String] = mapping
+// final case class RawIngestConfig(
+//   mapping: Map[String, String],
+//   idColumn: String = "record_id",
+//   tableFieldName: String = "table"
+// ) {
+//   // aliases to be tolerant with different field names used elsewhere
+//   val specs: Map[String, String]  = mapping
+//   val fields: Map[String, String] = mapping
 
-  def get(key: String): Option[String] = mapping.get(key)
-  def contains(key: String): Boolean   = mapping.contains(key)
-}
+//   def get(key: String): Option[String] = mapping.get(key)
+//   def contains(key: String): Boolean   = mapping.contains(key)
+// }
+final case class RawIngestConfig(
+  idField: Option[String],            // เช่น "record_id" หรือ None
+  tableField: Option[String],         // ระบุตารางปลายทางแบบ dynamic (ถ้ามี) หรือ None
+  fields: List[(String, String)]      // mapping: ชื่อคอลัมน์ -> สเปค (path:/ json:... attr:...)
+)
