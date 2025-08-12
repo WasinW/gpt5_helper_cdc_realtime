@@ -1,3 +1,22 @@
+#!/usr/bin/env bash
+# This script replaces the CommonRunner.scala file with a version
+# that does not depend on QualityRules. It also backs up the old
+# CommonRunner.scala so you can restore it if needed.
+
+set -euo pipefail
+
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+FILE="$ROOT_DIR/framework/src/main/scala/com/analytics/framework/app/CommonRunner.scala"
+
+if [ ! -f "$FILE" ]; then
+  echo "Error: $FILE not found. Please run this script from the root of the repository." >&2
+  exit 1
+fi
+
+# backup existing file with timestamp
+cp "$FILE" "${FILE}.bak.$(date +%s)"
+
+cat > "$FILE" <<'SCALA'
 package com.analytics.framework.app
 
 import com.analytics.framework.utils.{JavaInterop, YamlLoader}
@@ -80,3 +99,6 @@ object CommonRunner {
     p.run().waitUntilFinish()
   }
 }
+SCALA
+
+echo "Updated $FILE successfully. A backup has been created in ${FILE}.bak.$(date +%s)."
