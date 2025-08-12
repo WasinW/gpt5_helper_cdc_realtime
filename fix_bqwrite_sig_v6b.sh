@@ -1,3 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cat > framework/src/main/scala/com/analytics/framework/pipeline/stages/BqWriteDynamicStage.scala <<'SCALA'
 package com.analytics.framework.pipeline.stages
 
 import com.google.api.services.bigquery.model.{TableRow, TableSchema}
@@ -54,3 +58,6 @@ class BqWriteDynamicStage(dataset: String)
     in
   }
 }
+SCALA
+
+echo "patched BqWriteDynamicStage.scala"

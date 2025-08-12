@@ -1,15 +1,10 @@
-package com.analytics.member.transformations
+package transformations
 
-import com.analytics.framework.pipeline.transformation.AnalyticsTransformation
+import java.util.{List => JList}
+import com.analytics.framework.core.base.{TransformModule, PipelineCtx}
 
-/**
-  * Domain‑specific analytics transformation for the Member domain.  Use
-  * this class to compute aggregated metrics and KPIs relevant to
-  * member analytics.
-  */
-class MemberAnalyticsTransform extends AnalyticsTransformation {
-  override def transform(refinedRecords: Any): Any = {
-    println("MemberAnalyticsTransform: computing member analytics metrics")
-    super.transform(refinedRecords)
-  }
+/** โดเมนยังไม่มีกติกาเฉพาะ ให้ผ่านค่าไปก่อน */
+class MemberAnalyticsTransform extends TransformModule[Map[String,Any], Map[String,Any]] {
+  override def transform(records: JList[Map[String,Any]], params: Map[String,Any])
+                        (implicit ctx: PipelineCtx): JList[Map[String,Any]] = records
 }

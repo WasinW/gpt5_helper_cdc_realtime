@@ -3,7 +3,7 @@ package com.analytics.framework.pipeline.core
 import org.apache.beam.sdk.transforms.DoFn
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessage
 import com.google.gson.{Gson, JsonParser, JsonElement}
-import scala.jdk.CollectionConverters._
+import scala.collection.JavaConverters._
 
 class NotificationProcessor(table: String) extends DoFn[PubsubMessage, NotificationEvent] {
   @transient private var gson: Gson = _

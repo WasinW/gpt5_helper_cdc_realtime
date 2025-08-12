@@ -1,42 +1,28 @@
 package com.analytics.framework.connectors
-
-import org.apache.beam.sdk.transforms.DoFn
-import com.google.cloud.bigquery._
-import com.analytics.framework.pipeline.core.NotificationEvent
-import scala.jdk.CollectionConverters._
-
-case class FetchedData(recordId: String, row: java.util.Map[String, AnyRef])
-
-class BigQueryDataFetcher(projectId: String, dataset: String, table: String, idColumn: String)
-  extends DoFn[NotificationEvent, FetchedData] {
-
-  @transient private var bq: BigQuery = _
-
-  @org.apache.beam.sdk.transforms.DoFn.Setup
-  def setup(): Unit = {
-    bq = BigQueryOptions.newBuilder().setProjectId(projectId).build().getService
-  }
-
-  @org.apache.beam.sdk.transforms.DoFn.ProcessElement
-  def process(ctx: DoFn[NotificationEvent, FetchedData]#ProcessContext): Unit = {
-    val e = ctx.element()
+import com.google.cloud.bigquery.{BigQuery,BigQueryOptions,QueryJobConfiguration,TableResult,FieldValueList,FieldList}
+import scala.collection.JavaConverters._
+object BigQueryDataFetcher{
+  final case class Event(recordIds: java.util.List[String])
+  def fetchByIds(projectId:String, dataset:String, table:String, idColumn:String, e: Event): List[Map[String,Any]] = {
+    val bq: BigQuery = BigQueryOptions.getDefaultInstance.getService
     val ids = e.recordIds.asScala.map(id => s"'$id'").mkString(",")
-    val sql = s"""SELECT * FROM `%s.%s.%s` WHERE %s IN (%s)""".format(projectId, dataset, table, idColumn, ids)
-
-    val config = QueryJobConfiguration.newBuilder(sql).setUseLegacySql(false).build()
-    val result = bq.query(config)
-
-    val schema = result.getSchema
-    for (row <- result.iterateAll().asScala) {
-      val map = new java.util.HashMap[String, AnyRef]()
-      var idx = 0
-      for (field <- schema.getFields.asScala) {
-        val v = row.get(idx)
-        map.put(field.getName, if (v == null || v.isNull) null else v.getValue)
-        idx += 1
-      }
-      val ridField = Option(map.get(idColumn)).map(_.toString).getOrElse(java.util.UUID.randomUUID().toString)
-      ctx.output(FetchedData(ridField, map))
+    val query = s"SELECT * FROM `${projectId}.${dataset}.${table}` WHERE ${idColumn} IN (${ids})"
+    val cfg = QueryJobConfiguration.newBuilder(query).build()
+    val result: TableResult = bq.query(cfg)
+    val fields = result.getSchema.getFields.asScala
+    val out = scala.collection.mutable.ListBuffer.empty[Map[String,Any]]
+    for (row: FieldValueList <- result.iterateAll().asScala) {
+      val map = fields.map { field =>
+        val v = row.get(field.getName)
+        val any: Any =
+          if (v.isNull) null
+          else if (v.getValue.isInstanceOf[java.lang.Long]) v.getLongValue
+          else v.getValue
+        field.getName -> any
+      }.toMap
+      val ridField = scala.Option(map.get(idColumn)).map(_.toString).getOrElse(java.util.UUID.randomUUID().toString)
+      out += map + ("_rid" -> ridField)
     }
+    out.toList
   }
 }

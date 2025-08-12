@@ -2,7 +2,7 @@ package com.analytics.framework.utils
 
 import org.yaml.snakeyaml.Yaml
 import java.io.FileInputStream
-import scala.jdk.CollectionConverters._
+import scala.collection.JavaConverters._
 
 object ConfigLoader {
   def load(path: String): java.util.Map[String, Object] = {

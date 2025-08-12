@@ -3,7 +3,7 @@ package com.analytics.framework.modules.audit
 import org.apache.beam.sdk.transforms.DoFn
 import com.analytics.framework.pipeline.core.CDCRecord
 import com.google.cloud.bigquery._
-import scala.jdk.CollectionConverters._
+import scala.collection.JavaConverters._
 
 class AuditLogger(projectId: String, frameworkDataset: String, tableName: String, zone: String)
   extends DoFn[CDCRecord, CDCRecord] {
