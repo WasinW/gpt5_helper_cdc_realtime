@@ -1,65 +1,54 @@
-// framework/src/main/scala/com/analytics/framework/pipeline/core/WindowingStrategy.scala
 package com.analytics.framework.pipeline.core
 
 import org.apache.beam.sdk.transforms.windowing._
-import org.apache.beam.sdk.transforms.DoFn
 import org.apache.beam.sdk.values.PCollection
 import org.joda.time.Duration
+import com.analytics.framework.utils.YamlLoader
+import scala.collection.JavaConverters._
 
 object WindowingStrategy {
   
-  sealed trait WindowConfig {
-    def duration: Duration
-    def allowedLateness: Duration
-    def trigger: Trigger
+  case class WindowConfig(
+    durationSec: Int,
+    allowedLatenessSec: Int,
+    earlyFiringSec: Option[Int] = None,
+    triggerType: String = "AfterWatermark"
+  ) {
+    def duration: Duration = Duration.standardSeconds(durationSec)
+    def allowedLateness: Duration = Duration.standardSeconds(allowedLatenessSec)
+    
+    def trigger: Trigger = triggerType match {
+      case "AfterWatermarkWithEarlyFiring" if earlyFiringSec.isDefined =>
+        AfterWatermark.pastEndOfWindow()
+          .withEarlyFirings(
+            AfterProcessingTime.pastFirstElementInPane()
+              .plusDelayOf(Duration.standardSeconds(earlyFiringSec.get))
+          )
+      case _ => 
+        AfterWatermark.pastEndOfWindow()
+    }
   }
   
-  // 5 Processing Windows Configuration
-  case object NotificationWindow extends WindowConfig {
-    val duration = Duration.standardSeconds(1)
-    val allowedLateness = Duration.standardSeconds(10)
-    val trigger = AfterWatermark.pastEndOfWindow()
+  def loadWindowConfig(configPath: String, stage: String): WindowConfig = {
+    val cfg = YamlLoader.load(configPath)
+    val windowing = cfg.get("windowing").map(_.asInstanceOf[Map[String,Any]]).getOrElse(Map.empty)
+    val defaults = windowing.get("defaults").map(_.asInstanceOf[Map[String,Any]]).getOrElse(Map.empty)
+    val stageConfig = defaults.get(stage).map(_.asInstanceOf[Map[String,Any]]).getOrElse(Map.empty)
+    
+    WindowConfig(
+      durationSec = stageConfig.get("duration_sec").map(_.asInstanceOf[Int]).getOrElse(60),
+      allowedLatenessSec = stageConfig.get("allowed_lateness_sec")
+        .map(_.asInstanceOf[Int])
+        .orElse(stageConfig.get("allowed_lateness_min").map(_.asInstanceOf[Int] * 60))
+        .getOrElse(300),
+      earlyFiringSec = stageConfig.get("early_firing_sec").map(_.asInstanceOf[Int]),
+      triggerType = stageConfig.get("trigger_type").map(_.toString).getOrElse("AfterWatermark")
+    )
   }
   
-  case object RawWindow extends WindowConfig {
-    val duration = Duration.standardSeconds(60)
-    val allowedLateness = Duration.standardMinutes(5)
-    val trigger = AfterWatermark.pastEndOfWindow()
-      .withEarlyFirings(
-        AfterProcessingTime.pastFirstElementInPane()
-          .plusDelayOf(Duration.standardSeconds(30))
-      )
-      .withLateFirings(AfterPane.elementCountAtLeast(1))
-  }
-  
-  case object StructureWindow extends WindowConfig {
-    val duration = Duration.standardSeconds(60)
-    val allowedLateness = Duration.standardMinutes(5)
-    val trigger = AfterWatermark.pastEndOfWindow()
-  }
-  
-  case object RefinedWindow extends WindowConfig {
-    val duration = Duration.standardSeconds(300)
-    val allowedLateness = Duration.standardMinutes(10)
-    val trigger = AfterWatermark.pastEndOfWindow()
-      .withEarlyFirings(
-        AfterProcessingTime.pastFirstElementInPane()
-          .plusDelayOf(Duration.standardMinutes(2))
-      )
-  }
-  
-  case object AnalyticsWindow extends WindowConfig {
-    val duration = Duration.standardSeconds(300)
-    val allowedLateness = Duration.standardMinutes(10)
-    val trigger = AfterWatermark.pastEndOfWindow()
-  }
-  
-  def applyWindow[T](
-    input: PCollection[T],
-    config: WindowConfig
-  ): PCollection[T] = {
+  def applyWindow[T](input: PCollection[T], config: WindowConfig, name: String): PCollection[T] = {
     input.apply(
-      s"Window_${config.getClass.getSimpleName}",
+      s"Window_$name",
       Window.into[T](FixedWindows.of(config.duration))
         .triggering(config.trigger)
         .withAllowedLateness(config.allowedLateness)
