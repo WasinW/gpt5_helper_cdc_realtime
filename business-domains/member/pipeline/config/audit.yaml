@@ -1,0 +1,27 @@
+# Audit Configuration
+audit:
+  base_bucket: gs://your-audit-bucket
+
+  # Audit paths follow pattern:
+  # ${base_bucket}/${audit_type}/${zone}/${domain}/${partition_date}/
+
+  paths:
+    reconciliation:
+      pattern: "${base_bucket}/reconcile/{zone}/{domain}/{partition_date}/"
+      retention_days: 90
+
+    data_quality:
+      pattern: "${base_bucket}/data_quality/{zone}/{domain}/{partition_date}/"
+      retention_days: 90
+
+    pipeline_log:
+      pattern: "${base_bucket}/audit_log/{zone}/{domain}/{partition_date}/"
+      retention_days: 365
+
+  # BigQuery audit tables
+  bigquery:
+    dataset: ${domain}_framework
+    tables:
+    - pipeline_log
+    - reconcile_log
+    - data_quality_log

@@ -1,0 +1,42 @@
+# Data Quality Configuration
+data_quality:
+  # Framework default rules
+  framework_defaults:
+  - rule_id: fw_not_null
+    rule_type: not_null
+    description: Framework level not null check
+    active: true
+
+  - rule_id: fw_date_format
+    rule_type: date_format
+    pattern: "YYYY-MM-DD"
+    description: Standard date format check
+    active: true
+
+  # Domain-specific defaults
+  domain_defaults:
+  - rule_id: dom_not_null_ids
+    rule_type: not_null
+    columns:
+    - "*.program_id"
+    - "*.member_id"
+    description: Check ID fields are not null
+    active: true
+
+  - rule_id: dom_date_range
+    rule_type: date_range
+    min_date: "2020-01-01"
+    max_date: "+1d" # Tomorrow
+    columns:
+    - "*.data_date"
+    description: Check dates are in valid range
+    active: true
+
+  # Table-specific rules
+  table_rules:
+    s_loy_program:
+    - rule_id: prog_business_rule_1
+      rule_type: custom
+      class: com.analytics.member.quality.ProgramBusinessRule
+      description: Custom business rule for program
+      active: true

@@ -1,0 +1,39 @@
+# Windowing Configuration
+windowing:
+  # Default windows for each stage
+  defaults:
+    notification:
+      duration_sec: 1
+      allowed_lateness_sec: 10
+      trigger_type: AfterWatermark
+
+    raw:
+      duration_sec: 60
+      allowed_lateness_min: 5
+      early_firing_sec: 30
+      trigger_type: AfterWatermarkWithEarlyFiring
+
+    structure:
+      duration_sec: 60
+      allowed_lateness_min: 5
+      trigger_type: AfterWatermark
+
+    refined:
+      duration_sec: 300
+      allowed_lateness_min: 10
+      early_firing_min: 2
+      trigger_type: AfterWatermarkWithEarlyFiring
+
+    analytics:
+      duration_sec: 300
+      allowed_lateness_min: 10
+      trigger_type: AfterWatermark
+
+  # Table-specific overrides
+  table_specific:
+    member_profile:
+      duration_sec: 120
+      allowed_lateness_min: 15
+    ms_member:
+      duration_sec: 600
+      allowed_lateness_min: 20

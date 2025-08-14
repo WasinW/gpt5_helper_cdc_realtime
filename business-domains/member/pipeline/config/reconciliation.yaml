@@ -1,0 +1,26 @@
+# Reconciliation Configuration
+reconciliation:
+  enabled: true
+
+  # AWS S3 Configuration
+  aws:
+    bucket: t1-dtl
+    region: ap-southeast-1
+    credentials:
+      source: secret_manager # or env_vars
+      secret_name: aws-s3-credentials
+
+  # Alert Configuration
+  alerting:
+    enabled: true
+    on_mismatch: true
+    channels:
+    - type: email
+      recipients: [ data-quality@company.com ]
+    - type: slack
+      webhook_url: ${SLACK_WEBHOOK_URL}
+
+  # Retry Configuration
+  retry:
+    max_attempts: 3
+    backoff_seconds: 60

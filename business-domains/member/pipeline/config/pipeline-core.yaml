@@ -1,0 +1,41 @@
+# Core Pipeline Configuration
+pipeline:
+  project_id: your-project-id
+  region: asia-southeast1
+  domain: member
+  name: member-cdc-pipeline-v2
+  streaming: true
+
+# API Configuration  
+api:
+  name: member_api
+  version: v1
+  endpoint: https://api.example.com/v1/member
+  timeout: 30
+  retry_count: 3
+
+# Datasets
+datasets:
+  raw: member_raw
+  structure: member_structure
+  refined: member_refined
+  analytics: member_analytics
+  framework: member_framework
+
+# BigQuery Storage Write API
+bigquery:
+  write_method: STORAGE_WRITE_API
+  storage_write_config:
+    num_streams: 50
+    triggering_frequency_sec: 60
+    exactly_once: true
+    auto_sharding: true
+
+# Performance Tuning
+performance:
+  num_workers: 10
+  max_num_workers: 50
+  machine_type: n2-highmem-8
+  disk_size_gb: 100
+  enable_streaming_engine: true
+  autoscaling_algorithm: THROUGHPUT_BASED

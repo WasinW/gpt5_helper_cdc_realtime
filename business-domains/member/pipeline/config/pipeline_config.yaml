@@ -1,25 +1,53 @@
-project_id: your-project-id
-region: asia-southeast1
-domain: member
-table: users
-id_column: record_id
-raw_dataset: member_raw
-structure_dataset: member_structure
-refined_dataset: member_refined
-analytics_dataset: member_analytics
-framework_dataset: member_framework
+# member-pipeline/config/pipeline_config.yaml
+pipeline:
+  name: "member-cdc-pipeline-v2"
+  streaming: true
 
-reconciler:
-  aws_bucket: your-aws-bucket
-  aws_prefix_raw: "eagleeye/member/raw/"
-  aws_prefix_structure: "eagleeye/member/structure/"
-  aws_prefix_refined: "eagleeye/member/refined/"
-  aws_prefix_analytics: "eagleeye/member/analytics/"
-  mapping_schemas:
-    users:
-      user_id:  record_id
-      user_name: name
-      user_email: email
+# Storage Write API Configuration
+bigquery:
+  write_method: "STORAGE_WRITE_API"
+  storage_write_config:
+    num_streams: 50
+    triggering_frequency_sec: 60
+    exactly_once: true
+    auto_sharding: true
 
-dq:
-  not_null: ["record_id", "email"]
+# Window Configuration
+windows:
+  notification:
+    duration_sec: 1
+    allowed_lateness_sec: 10
+  raw:
+    duration_sec: 60
+    allowed_lateness_min: 5
+    early_firing_sec: 30
+  structure:
+    duration_sec: 60
+    allowed_lateness_min: 5
+  refined:
+    duration_sec: 300
+    allowed_lateness_min: 10
+    early_firing_min: 2
+  analytics:
+    duration_sec: 300
+    allowed_lateness_min: 10
+
+# Performance Tuning
+performance:
+  num_workers: 10
+  max_num_workers: 50
+  machine_type: "n2-highmem-8"
+  disk_size_gb: 100
+  enable_streaming_engine: true
+
+# S3 Reconciliation
+s3:
+  bucket: "your-s3-bucket"
+  region: "ap-southeast-1"
+  base_prefix: "eagleeye/member"
+  alert_on_mismatch: true
+
+# Monitoring
+monitoring:
+  metrics_interval_sec: 60
+  enable_profiling: true
